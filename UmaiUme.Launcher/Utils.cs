@@ -57,27 +57,27 @@ namespace UmaiUme.Launcher
         {
             string name = new AssemblyName(args.Name).Name;
             Assembly result;
-            if (SearchAssembly(name, Program.ReiPatcherDir, out result)
-                || SearchAssembly(name, Program.PatchesDir, out result)
-                || SearchAssembly(name, Program.AssembliesDir, out result))
+            if (SearchAssembly(name, Program.ReiPatcherDir, false, out result)
+                || SearchAssembly(name, Program.PatchesDir, true, out result)
+                || SearchAssembly(name, Program.AssembliesDir, true, out result))
                 return result;
             Logger.Log($"Could not locate {name}!");
             return null;
         }
 
-        private static bool SearchAssembly(string name, string path, out Assembly result)
+        private static bool SearchAssembly(string name, string path, bool loadIntoMemory, out Assembly result)
         {
             result = null;
             string fileDLL = Path.Combine(path, name + ".dll");
             string fileEXE = Path.Combine(path, name + ".exe");
             if (File.Exists(fileDLL))
             {
-                result = Assembly.Load(File.ReadAllBytes(fileDLL));
+                result = loadIntoMemory ? Assembly.Load(File.ReadAllBytes(fileDLL)) : Assembly.LoadFrom(fileDLL);
                 return true;
             }
             if (File.Exists(fileEXE))
             {
-                result = Assembly.Load(File.ReadAllBytes(fileEXE));
+                result = loadIntoMemory ? Assembly.Load(File.ReadAllBytes(fileEXE)) : Assembly.LoadFrom(fileEXE);
                 return true;
             }
 

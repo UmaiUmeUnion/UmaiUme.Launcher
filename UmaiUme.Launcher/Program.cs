@@ -186,13 +186,14 @@ namespace UmaiUme.Launcher
 
             foreach (PatchBase patch in patches)
             {
-                Logger.LogColor(LogLevel.Info, $"[$(Green)POST-PATCH$] {patch.Name} {patch.Version}");
                 try
                 {
                     patch.PostPatch();
+                    Logger.LogColor(LogLevel.Info, $"[$(Green)POST-PATCH$] {patch.Name} {patch.Version}");
                 }
                 catch (Exception e)
                 {
+                    Logger.LogColor(LogLevel.Info, $"[$(Red)POST-PATCH$] {patch.Name} {patch.Version}");
                     Logger.Log(
                     LogLevel.Error,
                     $"An error occurred in {patch.Name} {patch.Version} ({patch.GetType().Assembly.GetName().Name} {patch.GetType().Assembly.GetName().Version}):\n {e}");
@@ -257,7 +258,7 @@ namespace UmaiUme.Launcher
                 }
                 catch (Exception e)
                 {
-                    Logger.LogColor(LogLevel.Info, $"[$(Red)PRE-PATCH$]{patch.Name}");
+                    Logger.LogColor(LogLevel.Info, $"[$(Red)PRE-PATCH$] {patch.Name}");
                     Logger.Log(LogLevel.Error, $"Failed to run pre-patch on {patch.Name}! Error info:\n{e}");
                     if (ContinueWithErrors)
                     {
