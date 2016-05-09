@@ -1,65 +1,21 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using System.Xml.Schema;
 using ExIni;
+using UmaiUme.Launcher.Logging;
 
-namespace UmaiUme.Launcher
+namespace UmaiUme.Launcher.Utils
 {
-    public static class Utils
+    public static class Helpers
     {
-        public const int CTRL_C_EVENT = 0;
-        public const int CTRL_BREAK_EVENT = 1;
-        public const int CTRL_CLOSE_EVENT = 2;
-        public const int CTRL_LOGOFF_EVENT = 5;
-        public const int CTRL_SHUTDOWN_EVENT = 6;
-
-        public const int SW_HIDE = 0;
-        public const int SW_SHOW = 5;
-
-
-
-        public static void Assert(Func<bool> func, string error)
-        {
-            if (!func())
-                return;
-            Logger.Log(LogLevel.Error, error);
-            if (Program.PauseOnError)
-            {
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey(true);
-            }
-            Environment.Exit(-1);
-        }
-
-        public static void Assert(Action func, string error)
-        {
-            try
-            {
-                func();
-            }
-            catch (Exception e)
-            {
-                Logger.Log(LogLevel.Error, $"{error}\nInfo: {e}");
-                if (Program.PauseOnError)
-                {
-                    Console.WriteLine("Press any key to exit...");
-                    Console.ReadKey(true);
-                }
-                Environment.Exit(-1);
-            }
-        }
-
         public static Assembly OnResolveAssembly(object sender, ResolveEventArgs args)
         {
             string name = new AssemblyName(args.Name).Name;
             Assembly result;
-            if (SearchAssembly(name, Program.ReiPatcherDir, false, out result)
-                || SearchAssembly(name, Program.PatchesDir, true, out result)
-                || SearchAssembly(name, Program.AssembliesDir, true, out result))
+            if (SearchAssembly(name, Configuration.ReiPatcherDir, false, out result)
+                || SearchAssembly(name, Configuration.PatchesDir, true, out result)
+                || SearchAssembly(name, Configuration.AssembliesDir, true, out result))
                 return result;
             Logger.Log($"Could not locate {name}!");
             return null;
@@ -82,6 +38,37 @@ namespace UmaiUme.Launcher
             }
 
             return false;
+        }
+
+        public static void Assert(Func<bool> func, string error)
+        {
+            if (!func())
+                return;
+            Logger.Log(LogLevel.Error, error);
+            if (Configuration.PauseOnError)
+            {
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey(true);
+            }
+            Environment.Exit(-1);
+        }
+
+        public static void Assert(Action func, string error)
+        {
+            try
+            {
+                func();
+            }
+            catch (Exception e)
+            {
+                Logger.Log(LogLevel.Error, $"{error}\nInfo: {e}");
+                if (Configuration.PauseOnError)
+                {
+                    Console.WriteLine("Press any key to exit...");
+                    Console.ReadKey(true);
+                }
+                Environment.Exit(-1);
+            }
         }
 
         public static void ShowError(string title, string error)
@@ -118,7 +105,8 @@ namespace UmaiUme.Launcher
             key.Comments.Append("If true, pauses and shows \"Press any key to exit...\" message after an error occurs");
             key = section.CreateKey("ContinueWithErrors");
             key.Value = "False";
-            key.Comments.Append("If true, UULauncher will skip patches that cause errors. If false, UULauncher will exit if an error occurs during patching.");
+            key.Comments.Append(
+            "If true, UULauncher will skip patches that cause errors. If false, UULauncher will exit if an error occurs during patching.");
             key = section.CreateKey("HideWhileGameRuns");
             key.Value = "False";
             key.Comments.Append("If true, will hide the console window while the game is running.");
@@ -145,46 +133,7 @@ namespace UmaiUme.Launcher
             "EDIT ME: If needed, specify the working directory of the executable. Usually the same as the game's root directory.");
 
 
-            file.Save(Program.DEFAULT_CONFIG_NAME);
+            file.Save(Configuration.DEFAULT_CONFIG_NAME);
         }
-
-        public static bool MoveFile(string source, string dest)
-        {
-            if (!File.Exists(source))
-                return false;
-
-            using (FileStream sourceStream = File.Open(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            {
-                using (FileStream destStream = File.Open(dest, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-                {
-                    byte[] buffer = new byte[1024];
-
-                    int length;
-                    while ((length = sourceStream.Read(buffer, 0, 1024)) > 0)
-                    {
-                        destStream.Write(buffer, 0, length);
-                        destStream.Flush();
-                    }
-                }
-            }
-
-            return true;
-        }
-
-        public static bool IsNullOrWhiteSpace(this string str)
-        {
-            return str == null || str.Trim() == string.Empty;
-        }
-
-        public delegate bool ConsoleCtrlHandler(int eventType);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, bool add);
-
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr GetConsoleWindow();
-
-        [DllImport("user32.dll")]
-        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     }
 }

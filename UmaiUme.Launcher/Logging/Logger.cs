@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
-namespace UmaiUme.Launcher
+namespace UmaiUme.Launcher.Logging
 {
     public enum LogLevel
     {
@@ -19,6 +16,7 @@ namespace UmaiUme.Launcher
     public static class Logger
     {
         private const string LOG_NAME = "UULauncher.log";
+
         private static readonly ConsoleColor[] levelColors =
         {
             ConsoleColor.Gray,
@@ -28,10 +26,9 @@ namespace UmaiUme.Launcher
         };
 
         private static readonly string[] levelNames = {"MSG", "INF", "WRN", "ERR"};
-
-        public static LogWriter LogWriter { get; }
-
-        private static bool timerStarted = false;
+        private static bool timerStarted;
+        private static DateTime startTime;
+        private static readonly Regex pattern = new Regex(@"\$\((?<color>\w+)\)(?<message>[^\$]+)\$");
 
         static Logger()
         {
@@ -42,8 +39,7 @@ namespace UmaiUme.Launcher
             Console.SetOut(LogWriter);
         }
 
-        private static DateTime startTime;
-
+        public static LogWriter LogWriter { get; }
         private static TimeSpan TimePassed => DateTime.Now - startTime;
 
         public static void Init()
@@ -64,19 +60,18 @@ namespace UmaiUme.Launcher
 
         public static void Log(string message)
         {
-            if(timerStarted)
+            if (timerStarted)
                 Console.Write($"[{TimePassed.TotalSeconds.ToString("###0.0000", CultureInfo.InvariantCulture)}]");
-            Console.WriteLine($"[{levelNames[(int)LogLevel.Message]}] {message}");
+            Console.WriteLine($"[{levelNames[(int) LogLevel.Message]}] {message}");
         }
 
-        private static readonly Regex pattern = new Regex(@"\$\((?<color>\w+)\)(?<message>[^\$]+)\$");
         public static void LogColor(LogLevel logLevel, string message)
         {
-            if(timerStarted)
+            if (timerStarted)
                 Console.Write($"[{TimePassed.TotalSeconds.ToString("###0.0000", CultureInfo.InvariantCulture)}]");
             ConsoleColor prev = Console.ForegroundColor;
-            Console.ForegroundColor = levelColors[(int)logLevel];
-            Console.Write($"[{levelNames[(int)logLevel]}] ");
+            Console.ForegroundColor = levelColors[(int) logLevel];
+            Console.Write($"[{levelNames[(int) logLevel]}] ");
             Console.ForegroundColor = prev;
             MatchCollection matches = pattern.Matches(message);
 
@@ -97,7 +92,7 @@ namespace UmaiUme.Launcher
                 message = message.Remove(0, index + match.Length);
             }
 
-            if(message != string.Empty)
+            if (message != string.Empty)
                 Console.Write(message);
             Console.WriteLine();
         }
@@ -107,7 +102,7 @@ namespace UmaiUme.Launcher
             ConsoleColor color;
             try
             {
-                color = (ConsoleColor)Enum.Parse(typeof(ConsoleColor), m.Groups["color"].Value, true);
+                color = (ConsoleColor) Enum.Parse(typeof (ConsoleColor), m.Groups["color"].Value, true);
             }
             catch (Exception)
             {
@@ -122,11 +117,11 @@ namespace UmaiUme.Launcher
 
         public static void Log(LogLevel logLevel, string message)
         {
-            if(timerStarted)
+            if (timerStarted)
                 Console.Write($"[{TimePassed.TotalSeconds.ToString("###0.0000", CultureInfo.InvariantCulture)}]");
             ConsoleColor prev = Console.ForegroundColor;
-            Console.ForegroundColor = levelColors[(int)logLevel];
-            Console.Write($"[{levelNames[(int)logLevel]}] {(logLevel > LogLevel.Info ? message : "")}");
+            Console.ForegroundColor = levelColors[(int) logLevel];
+            Console.Write($"[{levelNames[(int) logLevel]}] {(logLevel > LogLevel.Info ? message : "")}");
             Console.ForegroundColor = prev;
             Console.WriteLine(logLevel <= LogLevel.Info ? message : "");
         }

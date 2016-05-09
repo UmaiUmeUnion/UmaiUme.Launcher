@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Text;
 
-namespace UmaiUme.Launcher
+namespace UmaiUme.Launcher.Logging
 {
     public class LogWriter : TextWriter
     {
-        public override Encoding Encoding => Encoding.UTF8;
-
         private readonly StreamWriter console, file;
 
         public LogWriter(StreamWriter consoleOutput, string fileName)
@@ -18,6 +13,8 @@ namespace UmaiUme.Launcher
             file = File.CreateText(fileName);
             file.AutoFlush = true;
         }
+
+        public override Encoding Encoding => Encoding.UTF8;
 
         protected override void Dispose(bool disposing)
         {
