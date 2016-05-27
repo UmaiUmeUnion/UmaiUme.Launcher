@@ -36,6 +36,11 @@ namespace UmaiUme.Launcher
                     Logger.Log(
                     LogLevel.Error,
                     $"An error occurred in {patch.Name} {patch.Version} ({patch.GetType().Assembly.GetName().Name} {patch.GetType().Assembly.GetName().Version}):\n {e}");
+                    if (Configuration.PauseOnError)
+                    {
+                        Console.WriteLine("Press any key to exit...");
+                        Console.ReadKey(true);
+                    }
                     Environment.Exit(-1);
                 }
             }
@@ -86,6 +91,11 @@ namespace UmaiUme.Launcher
                         Logger.Log(
                         LogLevel.Error,
                         $"An error occurred in {patch.Name} {patch.Version} ({patch.GetType().Assembly.GetName().Name} {patch.GetType().Assembly.GetName().Version}):\n {e}");
+                        if (Configuration.PauseOnError)
+                        {
+                            Console.WriteLine("Press any key to exit...");
+                            Console.ReadKey(true);
+                        }
                         Environment.Exit(-1);
                     }
                 }
