@@ -24,7 +24,6 @@ namespace UmaiUme.Launcher
 
         private static readonly string PROCESS_NAME = Process.GetCurrentProcess().ProcessName;
         private static string configFilePath;
-        private static readonly List<PatcherArguments> Assemblies = new List<PatcherArguments>();
         public static Process GameProcess;
         private static Version Version => Assembly.GetExecutingAssembly().GetName().Version;
 
