@@ -36,10 +36,12 @@ namespace UmaiUme.Launcher
             Console.ForegroundColor = ConsoleColor.DarkGreen;
             Console.WriteLine(LOGO);
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine($"{new string(' ', 30)} Launcher v. {Version.Major}.{Version.Minor}.{Version.Build} (Revision {Version.Revision})");
+            string name =
+            $"{new string(' ', 30)} Launcher v. {Version.Major}.{Version.Minor}.{Version.Build} (Revision {Version.Revision})";
+            Console.WriteLine(name);
 #if GIT
             Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine($"{new string(' ', 15)}{VersionInfo}");
+            Console.WriteLine($"{new string(' ', name.Length - VersionInfo.Length)}{VersionInfo}");
             Console.ForegroundColor = ConsoleColor.Gray;
 #endif
             Console.WriteLine();
