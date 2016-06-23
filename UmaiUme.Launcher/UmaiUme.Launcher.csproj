@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import Project="$(MSBuildExtensionsPath)\MSBuildCommunityTasks\MSBuild.Community.Tasks.Targets"/>
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -12,7 +13,6 @@
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
-    <AssemblyVersion>0.1.0.83</AssemblyVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -24,12 +24,6 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
-    <PrimaryVersionType>AssemblyVersionAttribute</PrimaryVersionType>
-    <AssemblyInfoFilePath>Properties\AssemblyInfo.cs</AssemblyInfoFilePath>
-    <UpdateAssemblyVersion>True</UpdateAssemblyVersion>
-    <UpdateAssemblyFileVersion>False</UpdateAssemblyFileVersion>
-    <UpdateAssemblyInfoVersion>False</UpdateAssemblyInfoVersion>
-    <AssemblyVersionSettings>None.IncrementOnDemand.None.Increment</AssemblyVersionSettings>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -40,15 +34,14 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
-    <UpdateAssemblyVersion>True</UpdateAssemblyVersion>
-    <UpdateAssemblyFileVersion>False</UpdateAssemblyFileVersion>
-    <UpdateAssemblyInfoVersion>False</UpdateAssemblyInfoVersion>
-    <AssemblyVersionSettings>None.IncrementOnDemand.None.Increment</AssemblyVersionSettings>
-    <AssemblyInfoFilePath>Properties\AssemblyInfo.cs</AssemblyInfoFilePath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ExIni">
-      <HintPath>..\Libs\ExIni.dll</HintPath>
+    <Reference Include="ExIni, Version=1.0.2.1, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Sybaris.ReiPatcherLoader\Libs\ExIni.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil">
       <HintPath>..\Libs\Mono.Cecil.dll</HintPath>
@@ -81,19 +74,54 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <EmbeddedResource Include="UULauncher.ini" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="icon.ico" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties StartAt="635975712000000000" Versioning="1" IncrementAction="4" IncrementOnBuild="True" IncrementOnRebuild="True" IncrementInformational="False" />
+      <UserProperties IncrementInformational="False" IncrementOnRebuild="True" IncrementOnBuild="True" IncrementAction="4" Versioning="1" StartAt="635975712000000000" />
     </VisualStudio>
   </ProjectExtensions>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
+	  <PropertyGroup>
+			<DefineConstants>GIT</DefineConstants>
+		</PropertyGroup>
+		
+    <GitPendingChanges>
+      <Output TaskParameter="HasPendingChanges" PropertyName="Pending" />
+    </GitPendingChanges>
+
+    <PropertyGroup>
+      <CommitPending Condition="'$(Pending)' == 'True'"> (modified)</CommitPending>
+      <CommitPending Condition="'$(Pending)' == 'False'"></CommitPending>
+    </PropertyGroup>
+
+    <GitVersion Short="True">
+      <Output TaskParameter="CommitHash" PropertyName="CommitHash" />
+    </GitVersion>
+
+    <GitBranch>
+      <Output TaskParameter="Branch" PropertyName="Branch" />
+    </GitBranch>
+
+		<GitDescribe LightWeight="True" Match="v[0-9].[0-9].[0-9]">
+			<Output TaskParameter="Tag" PropertyName="BuildVersion" />
+			<Output TaskParameter="CommitCount" PropertyName="BuildRevision"/>
+		</GitDescribe>
+		
+		<AssemblyInfo CodeLanguage="CS"
+				OutputFile="Properties\VersionInfoGit.cs" 
+				AssemblyVersion="$(BuildVersion.Substring(1)).$(BuildRevision)" 
+				AssemblyFileVersion="$(BuildVersion.Substring(1)).$(BuildRevision)"
+        AssemblyInformationalVersion="Built from$(CommitPending) GIT $(CommitHash) at $(Branch)" />
+		<ItemGroup>
+			<Compile Include="Properties\VersionInfoGit.cs" />
+		</ItemGroup>
   </Target>
   <Target Name="AfterBuild">
+		<Delete Files="Properties\VersionInfoGit.cs" />
   </Target>
-  -->
 </Project>

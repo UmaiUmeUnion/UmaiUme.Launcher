@@ -1,7 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
+using System.Text.RegularExpressions;
 using ExIni;
+using Microsoft.Win32;
 using ReiPatcher;
+using UmaiUme.Launcher.Logging;
 using UmaiUme.Launcher.Utils;
 using static UmaiUme.Launcher.Utils.Helpers;
 
@@ -10,130 +15,158 @@ namespace UmaiUme.Launcher
     public static class Configuration
     {
         public const string DEFAULT_CONFIG_NAME = "UULauncher.ini";
-        public static string AssembliesDir { get; private set; }
-        public static IniFile ConfigFile { get; private set; }
         public static string ConfigFilePath { get; private set; }
         public static bool ContinueWithErrors { get; private set; }
         public static string ExecArgs { get; private set; }
         public static string Executable { get; private set; }
         public static string GameExecutableName { get; private set; }
         public static bool HideWhileGameRuns { get; private set; }
-        public static string PatchesDir { get; private set; }
         public static bool PauseOnError { get; private set; }
-        public static string ReiPatcherDir { get; private set; }
         public static string WorkingDirectory { get; private set; }
 
-        public static void Load(string path)
+        private static readonly Regex patternKeyVal = new Regex(@"(?<key>[^;]+)\=(?<value>[^;]*)(;.*)?");
+        private static readonly Regex patternSection = new Regex(@"\[(?<section>.*)\]");
+        private static readonly Regex patternRegSearch = new Regex(@"\$\((?<regPath>[^\(\)]*)\)");
+        private static readonly Regex patternVariable = new Regex(@"\%(?<variable>[^\%]*)\%");
+
+        private static Dictionary<string, Dictionary<string, string>> configuration = new Dictionary<string, Dictionary<string, string>>();
+
+        public static string GetValue(string section, string key)
+        {
+            Dictionary<string, string> sec;
+            string result;
+            return configuration.TryGetValue(section, out sec) && sec.TryGetValue(key, out result) ? result : string.Empty;
+        }
+
+        public static void SaveConfig(string path)
+        {
+            using (StreamWriter sw = new StreamWriter(File.Create(path)))
+            {
+                sw.WriteLine(";DO NOT EDIT");
+                sw.WriteLine(";This is a temoporary configuration file created by UULauncher for patching purposes.");
+                sw.WriteLine(";Editing this file will not affect UULauncher's configuration.");
+                sw.WriteLine(";To edit UULauncher's configuration, edit the following configuration file:");
+                sw.WriteLine(";");
+                sw.WriteLine(";{0}", ConfigFilePath);
+                sw.WriteLine();
+                foreach (var section in configuration)
+                {
+                    sw.WriteLine("[{0}]", section.Key);
+                    foreach (var variable in section.Value)
+                    {
+                        sw.WriteLine("{0}={1}", variable.Key, variable.Value);
+                    }
+                    sw.WriteLine();
+                }
+            }
+        }
+
+        public static void ParseConfig(string path)
         {
             ConfigFilePath = path;
-            IniFile configFile = IniFile.FromFile(ConfigFilePath);
-            ReiPatcherDir = configFile["Directories"]["ReiPatcherDir"].Value;
-            Assert(
-            () => ReiPatcherDir.IsNullOrWhiteSpace() || !Directory.Exists(ReiPatcherDir),
-            "Could not locate ReiPatcher directory. Make sure the directory specified in the configuration file is valid.");
+            string[] lines = File.ReadAllLines(path);
 
-            PatchesDir = configFile["Directories"]["PatchesDir"].Value;
-            Assert(
-            () => ReiPatcherDir.IsNullOrWhiteSpace() || !Directory.Exists(PatchesDir),
-            "Could not locate Patches directory. Make sure the directory specified in the configuration file is valid.");
+            Dictionary<string, string> currentSection = new Dictionary<string, string>();
+            configuration.Add("DEFINE", currentSection);
 
-            AssembliesDir = configFile["Directories"]["AssembliesDir"].Value;
-            Assert(
-            () => ReiPatcherDir.IsNullOrWhiteSpace() || !Directory.Exists(AssembliesDir),
-            "Could not locate Assemblies directory. Make sure the directory specified in the configuration file is valid.");
+            foreach (string configLine in lines) {
+                string line = configLine.Trim();
 
-            Executable = configFile["Launch"]["Executable"].Value;
+                if(line.StartsWith(";"))
+                    continue;
+
+                Match sectionMatch = patternSection.Match(line);
+
+                if (sectionMatch.Success)
+                {
+                    string sec = sectionMatch.Groups["section"].Value.Trim();
+
+                    if (!configuration.ContainsKey(sec))
+                        configuration.Add(sec, new Dictionary<string, string>());
+                    currentSection = configuration[sec];
+                    continue;
+                }
+
+                Match keyValMatch = patternKeyVal.Match(line);
+
+                if (!keyValMatch.Success)
+                    continue;
+                string key = keyValMatch.Groups["key"].Value.Trim();
+                string value = keyValMatch.Groups["value"].Value.Trim();
+
+                value = patternVariable.Replace(value,
+                match =>
+                {
+                    string var = match.Groups["variable"].Value.Trim();
+                    Dictionary<string, string> defines;
+                    if (!configuration.TryGetValue("DEFINE", out defines))
+                        return Environment.GetEnvironmentVariable(var) ?? string.Empty;
+                    string result;
+                    return defines.TryGetValue(var, out result) ? result : string.Empty;
+                });
+
+                value = patternRegSearch.Replace(value,
+                match =>
+                {
+                    string regKey = match.Groups["regPath"].Value.Trim();
+                    int index = regKey.LastIndexOf('\\');
+                    string keyName = index != -1 ? regKey.Substring(0, index) : regKey;
+                    string valueName = index != -1 ? regKey.Remove(0, index + 1) : string.Empty;
+
+                    return (string) Registry.GetValue(keyName, valueName, string.Empty);
+                });
+
+                currentSection[key] = value;
+            }
+            LoadValues();
+        }
+
+        private static void LoadValues()
+        {
+            Executable = GetValue("Launch", "Executable");
             Assert(
-            () => ReiPatcherDir.IsNullOrWhiteSpace() || !File.Exists(Executable),
+            () => Executable.IsNullOrWhiteSpace() || !File.Exists(Executable),
             "Could not locate the executable to launch. Make sure the launching executable is specified!");
 
-            ExecArgs = configFile["Launch"]["Arguments"].Value;
+            ExecArgs = GetValue("Launch", "Arguments");
 
-            WorkingDirectory = configFile["Launch"]["WorkingDirectory"].Value;
+            WorkingDirectory = GetValue("Launch", "WorkingDirectory");
 
-            GameExecutableName = configFile["Launch"]["GameExecutableName"].Value;
+            GameExecutableName = GetValue("Launch", "GameExecutableName");
 
-            IniKey pauseOnError = configFile["UULauncher"]["PauseOnError"];
+            string pauseOnError = GetValue("UULauncher", "PauseOnError");
             bool bPauseOnError = true;
-            if (pauseOnError.Value.IsNullOrWhiteSpace() || !bool.TryParse(pauseOnError.Value, out bPauseOnError))
-                pauseOnError.Value = bPauseOnError.ToString();
+            if (pauseOnError.IsNullOrWhiteSpace() || !bool.TryParse(pauseOnError, out bPauseOnError))
+                Logger.Log(LogLevel.Warning, $"Value PauseOnError could not be parsed! Setting to {bPauseOnError}...");
             PauseOnError = bPauseOnError;
 
-            IniKey continueWithErrors = configFile["UULauncher"]["ContinueWithErrors"];
+            string continueWithErrors = GetValue("UULauncher", "ContinueWithErrors");
             bool bContinueWithErrors = false;
-            if (continueWithErrors.Value.IsNullOrWhiteSpace()
-                || !bool.TryParse(continueWithErrors.Value, out bContinueWithErrors))
-                continueWithErrors.Value = bContinueWithErrors.ToString();
+            if (continueWithErrors.IsNullOrWhiteSpace()
+                || !bool.TryParse(continueWithErrors, out bContinueWithErrors))
+                Logger.Log(LogLevel.Warning, $"Value ContinueWithErrors could not be parsed! Setting to {bContinueWithErrors}...");
             ContinueWithErrors = bContinueWithErrors;
 
-            IniKey hideWhileGameRuns = configFile["UULauncher"]["HideWhileGameRuns"];
+            string hideWhileGameRuns = GetValue("UULauncher", "HideWhileGameRuns");
             bool bHideWhileGameRuns = false;
-            if (hideWhileGameRuns.Value.IsNullOrWhiteSpace()
-                || !bool.TryParse(hideWhileGameRuns.Value, out bHideWhileGameRuns))
-                hideWhileGameRuns.Value = bHideWhileGameRuns.ToString();
+            if (hideWhileGameRuns.IsNullOrWhiteSpace()
+                || !bool.TryParse(hideWhileGameRuns, out bHideWhileGameRuns))
+                Logger.Log(LogLevel.Warning, $"Value HideWhileGameRuns could not be parsed! Setting to {bHideWhileGameRuns}...");
             HideWhileGameRuns = bHideWhileGameRuns;
-
-            configFile.Save(ConfigFilePath);
-
-            AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
-
-            RPConfig.ConfigFilePath = ConfigFilePath;
-            ConfigFile = RPConfig.ConfigFile;
-            RPConfig.SetConfig("ReiPatcher", "AssembliesDir", AssembliesDir);
         }
 
         public static void CreateDefaultConfiguration()
         {
-            IniFile file = new IniFile();
-            IniSection section = file["UULauncher"];
-            section.Comments.Append(
-            "UmaiUme Launcher Default Configuration File",
-            "",
-            "In this file, you can configure where UULauncher loads the game and other tools from.",
-            "By default, UULauncher assumes that it has been installed into the game's root directory.",
-            "If that is the case, you can only edit the lines commented with \"EDIT ME\" prefix.",
-            "",
-            "",
-            "EDIT ME: Complete the comment below this one by specifying the name of the game's executable without the .exe extension.",
-            "@GAME=",
-            "",
-            "EDIT ME: Specify the path to the game root",
-            "@GAME_PATH=",
-            "",
-            "EDIT ME: Edit the section below to configure UULauncher to your taste");
-            IniKey key = section["PauseOnError"];
-            key.Value = "True";
-            key.Comments.Append("If true, pauses and shows \"Press any key to exit...\" message after an error occurs");
-            key = section["ContinueWithErrors"];
-            key.Value = "False";
-            key.Comments.Append(
-            "If true, UULauncher will skip patches that cause errors. If false, UULauncher will exit if an error occurs during patching.");
-            key = section["HideWhileGameRuns"];
-            key.Value = "False";
-            key.Comments.Append("If true, will hide the console window while the game is running.");
-
-            section = file["Directories"];
-            key = section["ReiPatcherDir"];
-            key.RawValue = "%GAME_PATH%\\ReiPatcher";
-            key.Comments.Append("Directory where ReiPatcher.exe is installed.");
-            key = section["PatchesDir"];
-            key.RawValue = "%GAME_PATH%\\ReiPatcher\\Patches";
-            key.Comments.Append("Directory where ReiPatcher patches are located.");
-            key = section["AssembliesDir"];
-            key.RawValue = "%GAME_PATH%\\%GAME%_Data\\Managed";
-            key.Comments.Append("Directory that contains the game's managed assemblies.");
-
-            section = file["Launch"];
-            key = section["Executable"];
-            key.Comments.Append("EDIT ME: Specify the path to the game's (or locale emulator's) executable.");
-            key = section["Arguments"];
-            key.Comments.Append(
-            "EDIT ME: Specify the arguments that are passed to the executable. If no arguments are needed/wanted, leave empty.");
-            key = section["WorkingDirectory"];
-            key.Comments.Append(
-            "EDIT ME: If needed, specify the working directory of the executable. Usually the same as the game's root directory.");
-
-            file.Save(DEFAULT_CONFIG_NAME);
+            using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream(typeof(Configuration), "UULauncher.ini"))
+            {
+                using (FileStream fs = File.Open(DEFAULT_CONFIG_NAME, FileMode.Create))
+                {
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = s.Read(buffer, 0, 1024)) > 0)
+                        fs.Write(buffer, 0, len);
+                }
+            }
         }
     }
 }

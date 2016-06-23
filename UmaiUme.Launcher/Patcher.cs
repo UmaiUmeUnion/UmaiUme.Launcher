@@ -9,6 +9,7 @@ using ReiPatcher;
 using ReiPatcher.Patch;
 using UmaiUme.Launcher.Logging;
 using UmaiUme.Launcher.Utils;
+using static UmaiUme.Launcher.Utils.Helpers;
 
 namespace UmaiUme.Launcher
 {
@@ -16,6 +17,11 @@ namespace UmaiUme.Launcher
     {
         public static List<PatcherArguments> Assemblies { get; set; }
         public static object Patches { get; set; }
+        public static string AssembliesDir { get; private set; }
+        public static string PatchesDir { get; private set; }
+        public static string ReiPatcherDir { get; private set; }
+
+        private static string TempConfigPath = string.Empty;
 
         public static void PostPatch()
         {
@@ -46,18 +52,31 @@ namespace UmaiUme.Launcher
             }
 
             Logger.Log(LogLevel.Info, "Done");
+
+            Logger.Log(LogLevel.Info, "Removing temporary configuration file");
+            try
+            {
+                if (TempConfigPath != string.Empty)
+                    File.Delete(TempConfigPath);
+            }
+            catch (Exception e)
+            {
+                Logger.Log(LogLevel.Warning, $"Failed to remove because of {e.GetType().Name}. Leaving the file for now...");   
+            }
+            
+            Logger.Log(LogLevel.Info, "Done");
         }
 
         public static void RestoreAssemblies()
         {
             Logger.Log(LogLevel.Info, "Restoring assemblies...");
 
-            string asmTempFolder = Path.Combine(Configuration.AssembliesDir, "asm_tmp");
+            string asmTempFolder = Path.Combine(AssembliesDir, "asm_tmp");
             if (Directory.Exists(asmTempFolder))
             {
                 foreach (string file in Directory.GetFiles(asmTempFolder))
                 {
-                    FileUtils.MoveFile(file, Path.Combine(Configuration.AssembliesDir, Path.GetFileName(file)));
+                    FileUtils.MoveFile(file, Path.Combine(AssembliesDir, Path.GetFileName(file)));
                 }
                 Directory.Delete(asmTempFolder, true);
             }
@@ -157,10 +176,10 @@ namespace UmaiUme.Launcher
                 {
                     assemblies.Add(key.Value);
 
-                    string path = Path.Combine(Configuration.AssembliesDir, key.Value);
+                    string path = Path.Combine(AssembliesDir, key.Value);
                     DefaultAssemblyResolver assemblyResolver = new DefaultAssemblyResolver();
-                    assemblyResolver.AddSearchDirectory(Configuration.AssembliesDir);
-                    assemblyResolver.AddSearchDirectory(Configuration.PatchesDir);
+                    assemblyResolver.AddSearchDirectory(AssembliesDir);
+                    assemblyResolver.AddSearchDirectory(PatchesDir);
                     assemblyResolver.AddSearchDirectory(Path.GetDirectoryName(path));
                     ReaderParameters rp = new ReaderParameters {AssemblyResolver = assemblyResolver};
                     AssemblyDefinition ass;
@@ -173,7 +192,7 @@ namespace UmaiUme.Launcher
                 }
             }
 
-            string asmTempFolder = Path.Combine(Configuration.AssembliesDir, "asm_tmp");
+            string asmTempFolder = Path.Combine(AssembliesDir, "asm_tmp");
             if (Directory.Exists(asmTempFolder))
             {
                 Logger.Log(LogLevel.Warning, "Found unrestored assemblies! Restoring before proceeding...");
@@ -184,15 +203,56 @@ namespace UmaiUme.Launcher
             Directory.CreateDirectory(asmTempFolder);
             foreach (string assembly in assemblies)
             {
-                File.Copy(Path.Combine(Configuration.AssembliesDir, assembly), Path.Combine(asmTempFolder, assembly));
+                File.Copy(Path.Combine(AssembliesDir, assembly), Path.Combine(asmTempFolder, assembly));
             }
 
             Logger.Log(LogLevel.Info, "Done");
         }
 
+        public static void Initialize()
+        {
+            Logger.Log(LogLevel.Info, "Parsing patcher configuration");
+            ReiPatcherDir = Configuration.GetValue("Directories", "ReiPatcherDir");
+            Assert(
+            () => ReiPatcherDir.IsNullOrWhiteSpace() || !Directory.Exists(ReiPatcherDir),
+            "Could not locate ReiPatcher directory. Make sure the directory specified in the configuration file is valid.");
+
+            PatchesDir = Configuration.GetValue("Directories", "PatchesDir");
+            Assert(
+            () => ReiPatcherDir.IsNullOrWhiteSpace() || !Directory.Exists(PatchesDir),
+            "Could not locate Patches directory. Make sure the directory specified in the configuration file is valid.");
+
+            AssembliesDir = Configuration.GetValue("Directories", "AssembliesDir");
+            Assert(
+            () => ReiPatcherDir.IsNullOrWhiteSpace() || !Directory.Exists(AssembliesDir),
+            "Could not locate Assemblies directory. Make sure the directory specified in the configuration file is valid.");
+
+            AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
+
+            TempConfigPath = Path.Combine(ReiPatcherDir, "ReiPatcher_temp.ini");
+
+            Logger.Log(LogLevel.Info, $"Creating temporary configuration file to {TempConfigPath}");
+            Configuration.SaveConfig(TempConfigPath);
+
+            RPConfig.ConfigFilePath = TempConfigPath;
+            RPConfig.SetConfig("ReiPatcher", "AssembliesDir", AssembliesDir);
+        }
+
+        public static Assembly OnResolveAssembly(object sender, ResolveEventArgs args)
+        {
+            string name = new AssemblyName(args.Name).Name;
+            Assembly result;
+            if (SearchAssembly(name, ReiPatcherDir, false, out result)
+                || SearchAssembly(name, PatchesDir, true, out result)
+                || SearchAssembly(name, AssembliesDir, true, out result))
+                return result;
+            Logger.Log($"Could not locate {name}!");
+            return null;
+        }
+
         public static void LoadPatches()
         {
-            string[] dlls = Directory.GetFiles(Configuration.PatchesDir, "*.dll", SearchOption.AllDirectories);
+            string[] dlls = Directory.GetFiles(PatchesDir, "*.dll", SearchOption.AllDirectories);
             Logger.Log(LogLevel.Info, $"Found {dlls.Length} DLLs");
             Logger.Log(LogLevel.Info, "Loading patches...");
 

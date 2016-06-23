@@ -26,14 +26,22 @@ namespace UmaiUme.Launcher
         private static string configFilePath;
         public static Process GameProcess;
         private static Version Version => Assembly.GetExecutingAssembly().GetName().Version;
-
+#if GIT
+        private static string VersionInfo
+            => FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion;
+#endif
         public static void Main(string[] args)
         {
             Logger.Init();
             Console.ForegroundColor = ConsoleColor.DarkGreen;
             Console.WriteLine(LOGO);
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine($"{new string(' ', 30)} Launcher v. {Version}");
+            Console.WriteLine($"{new string(' ', 30)} Launcher v. {Version.Major}.{Version.Minor}.{Version.Build} (Build {Version.Revision})");
+#if GIT
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine($"{new string(' ', 15)}{VersionInfo}");
+            Console.ForegroundColor = ConsoleColor.Gray;
+#endif
             Console.WriteLine();
             Console.WriteLine($"Started on {DateTime.Now.ToString("F", CultureInfo.InvariantCulture)}");
             Logger.StartTime();
@@ -50,7 +58,7 @@ namespace UmaiUme.Launcher
 
                 if (result == DialogResult.Yes)
                 {
-                    CreateDefaultIni();
+                    Configuration.CreateDefaultConfiguration();
                     ShowInfo(
                     "Configuration file created.",
                     $"Created configuration file {Configuration.DEFAULT_CONFIG_NAME}. Edit it before running {PROCESS_NAME}.exe again.");
@@ -62,9 +70,10 @@ namespace UmaiUme.Launcher
                     Environment.Exit(-1);
                 }
             }
-            Configuration.Load(configFilePath);
+            Configuration.ParseConfig(configFilePath);
             Logger.Log(LogLevel.Info, $"Loaded configuration file from {configFilePath}");
 
+            Assert(() => Patcher.Initialize(), "An error occurred while initializing the patcher!");
             Assert(() => Patcher.LoadPatches(), "An error occurred while loading patches!");
             Assert(() => Patcher.PrePatch(), "An error occurred during pre-patching!");
             Assert(() => Patcher.Patch(), "An error occurred during patching!");
@@ -78,7 +87,6 @@ namespace UmaiUme.Launcher
         private static void RunGame()
         {
             Logger.Log(LogLevel.Info, "Patching is complete. Launching the game...");
-
 
             if (!Configuration.GameExecutableName.IsNullOrWhiteSpace())
             {
@@ -173,9 +181,15 @@ namespace UmaiUme.Launcher
 
         private static void PrintHelp()
         {
+            string productInfo;
+#if GIT
+            productInfo = VersionInfo;
+#else
+            productInfo = string.Empty;
+#endif
             ShowInfo(
             "UmaiUme Launcher Help Box",
-            $"UmaiUme Launcher (UULauncher) v. {Version}\n© 2016 UmaiUme\nLicensed under the MIT licence\n\nA tool to patch and run Unity Games.\n\nUsage: {PROCESS_NAME}.exe [ARGUMENTS]\n\nARGUMENTS:\n(No arguments)\tRuns UULauncher with the default configuration file.\n-h\t\tDisplays this help box.\n-c <PATH>\tRuns UULauncher with custom configuration file specified by <PATH>.");
+            $"UmaiUme Launcher (UULauncher) v. {Version}\n{productInfo}\n© 2016 UmaiUme\nLicensed under the MIT licence\n\nA tool to patch and run Unity Games.\n\nUsage: {PROCESS_NAME}.exe [ARGUMENTS]\n\nARGUMENTS:\n(No arguments)\tRuns UULauncher with the default configuration file.\n-h\t\tDisplays this help box.\n-c <PATH>\tRuns UULauncher with custom configuration file specified by <PATH>.");
         }
     }
 }
