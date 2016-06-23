@@ -16,14 +16,14 @@ All in all, if you are familiar with Illusion Plugin Architecture or Sybaris, th
 
 ### How to install (basic guide)
 
-#### 1. Install required tools
-UULauncher requires the following assemblies before working:
+#### 1. Install tools for ReiPatcher support
+Currently UULauncher requires the following assemblies before working:
 * ReiPatcher.exe
 * Mono.Cecil.dll
 * ExIni.dll
 
+Download these assemblies and place them in the same folder (e.g. `<Game Root>\Patches\ReiPatcher`).
 **NOTE:** You do not need to have ReiPatcher installed.
-**NOTE:** ExIni.dll must be in the same directory as UULauncher. The location of other assemblies can be configured later.
 
 #### 2. Launch UULauncher.exe
 Put UULauncher.exe into the game's root and run it once.
@@ -33,7 +33,7 @@ On the first launch, UULauncher will prompt you to create the configuration file
 For more info, run ``UULauncher.exe -h`` which will show a help screen.
 
 #### 3. Edit ``UULauncher.ini``
-Edit ``UULauncher.ini`` with a text editor of your choice. Follow the instructions in the configuration file and edit all the required fields to your preference.
+Edit ``UULauncher.ini`` with a text editor of your choice. **Follow** the instructions in the configuration file and **edit** all the required fields to your preference.
 
 Some ReiPatcher patchers require to add some addition fields into the configuration file (e.g. UnityInjector). Refer to the guide of the specific patcher for more info.
 
