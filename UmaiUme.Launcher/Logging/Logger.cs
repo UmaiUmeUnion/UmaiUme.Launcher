@@ -60,15 +60,13 @@ namespace UmaiUme.Launcher.Logging
 
         public static void Log(string message)
         {
-            if (timerStarted)
-                Console.Write($"[{TimePassed.TotalSeconds.ToString("###0.0000", CultureInfo.InvariantCulture)}]");
+            if (timerStarted) Console.Write($"[{TimePassed.TotalSeconds.ToString("###0.0000", CultureInfo.InvariantCulture)}]");
             Console.WriteLine($"[{levelNames[(int) LogLevel.Message]}] {message}");
         }
 
         public static void LogColor(LogLevel logLevel, string message)
         {
-            if (timerStarted)
-                Console.Write($"[{TimePassed.TotalSeconds.ToString("###0.0000", CultureInfo.InvariantCulture)}]");
+            if (timerStarted) Console.Write($"[{TimePassed.TotalSeconds.ToString("###0.0000", CultureInfo.InvariantCulture)}]");
             ConsoleColor prev = Console.ForegroundColor;
             Console.ForegroundColor = levelColors[(int) logLevel];
             Console.Write($"[{levelNames[(int) logLevel]}] ");
@@ -92,8 +90,7 @@ namespace UmaiUme.Launcher.Logging
                 message = message.Remove(0, index + match.Length);
             }
 
-            if (message != string.Empty)
-                Console.Write(message);
+            if (message != string.Empty) Console.Write(message);
             Console.WriteLine();
         }
 
@@ -117,8 +114,7 @@ namespace UmaiUme.Launcher.Logging
 
         public static void Log(LogLevel logLevel, string message)
         {
-            if (timerStarted)
-                Console.Write($"[{TimePassed.TotalSeconds.ToString("###0.0000", CultureInfo.InvariantCulture)}]");
+            if (timerStarted) Console.Write($"[{TimePassed.TotalSeconds.ToString("###0.0000", CultureInfo.InvariantCulture)}]");
             ConsoleColor prev = Console.ForegroundColor;
             Console.ForegroundColor = levelColors[(int) logLevel];
             Console.Write($"[{levelNames[(int) logLevel]}] {(logLevel > LogLevel.Info ? message : "")}");

@@ -29,8 +29,7 @@ namespace UmaiUme.Launcher.Utils
 
         public static void Assert(Func<bool> func, string error)
         {
-            if (!func())
-                return;
+            if (!func()) return;
             Logger.Log(LogLevel.Error, error);
             if (Configuration.PauseOnError)
             {

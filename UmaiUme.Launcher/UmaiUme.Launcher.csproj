@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <Import Project="$(MSBuildExtensionsPath)\MSBuildCommunityTasks\MSBuild.Community.Tasks.Targets"/>
+  <Import Project="$(MSBuildExtensionsPath)\MSBuildCommunityTasks\MSBuild.Community.Tasks.Targets" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -39,15 +39,11 @@
     <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ExIni, Version=1.0.2.1, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Sybaris.ReiPatcherLoader\Libs\ExIni.dll</HintPath>
+    <Reference Include="ExIni">
+      <HintPath>..\Libs\ExIni.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil">
       <HintPath>..\Libs\Mono.Cecil.dll</HintPath>
-    </Reference>
-    <Reference Include="Mono.Cecil.Rocks">
-      <HintPath>..\Libs\Mono.Cecil.Rocks.dll</HintPath>
     </Reference>
     <Reference Include="ReiPatcher">
       <HintPath>..\Libs\ReiPatcher.exe</HintPath>
@@ -64,7 +60,9 @@
     <Compile Include="Configuration.cs" />
     <Compile Include="Logging\Logger.cs" />
     <Compile Include="Logging\LogWriter.cs" />
-    <Compile Include="Patcher.cs" />
+    <Compile Include="Patchers\Patcher.cs" />
+    <Compile Include="Patchers\PatcherManager.cs" />
+    <Compile Include="Patchers\ReiPatcher.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utils\ConsoleUtils.cs" />
@@ -79,49 +77,41 @@
   <ItemGroup>
     <Content Include="icon.ico" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties IncrementInformational="False" IncrementOnRebuild="True" IncrementOnBuild="True" IncrementAction="4" Versioning="1" StartAt="635975712000000000" />
+      <UserProperties StartAt="635975712000000000" Versioning="1" IncrementAction="4" IncrementOnBuild="True" IncrementOnRebuild="True" IncrementInformational="False" />
     </VisualStudio>
   </ProjectExtensions>
   <Target Name="BeforeBuild">
-	  <PropertyGroup>
-			<DefineConstants>GIT</DefineConstants>
-		</PropertyGroup>
-		
+    <PropertyGroup>
+      <DefineConstants>GIT</DefineConstants>
+    </PropertyGroup>
     <GitPendingChanges>
       <Output TaskParameter="HasPendingChanges" PropertyName="Pending" />
     </GitPendingChanges>
-
     <PropertyGroup>
       <CommitPending Condition="'$(Pending)' == 'True'"> (modified)</CommitPending>
-      <CommitPending Condition="'$(Pending)' == 'False'"></CommitPending>
+      <CommitPending Condition="'$(Pending)' == 'False'">
+      </CommitPending>
     </PropertyGroup>
-
     <GitVersion Short="True">
       <Output TaskParameter="CommitHash" PropertyName="CommitHash" />
     </GitVersion>
-
     <GitBranch>
       <Output TaskParameter="Branch" PropertyName="Branch" />
     </GitBranch>
-
-		<GitDescribe LightWeight="True" Match="v[0-9].[0-9].[0-9]">
-			<Output TaskParameter="Tag" PropertyName="BuildVersion" />
-			<Output TaskParameter="CommitCount" PropertyName="BuildRevision"/>
-		</GitDescribe>
-		
-		<AssemblyInfo CodeLanguage="CS"
-				OutputFile="Properties\VersionInfoGit.cs" 
-				AssemblyVersion="$(BuildVersion.Substring(1)).$(BuildRevision)" 
-				AssemblyFileVersion="$(BuildVersion.Substring(1)).$(BuildRevision)"
-        AssemblyInformationalVersion="Built from$(CommitPending) GIT $(CommitHash) at $(Branch)" />
-		<ItemGroup>
-			<Compile Include="Properties\VersionInfoGit.cs" />
-		</ItemGroup>
+    <GitDescribe LightWeight="True" Match="v[0-9].[0-9].[0-9]">
+      <Output TaskParameter="Tag" PropertyName="BuildVersion" />
+      <Output TaskParameter="CommitCount" PropertyName="BuildRevision" />
+    </GitDescribe>
+    <AssemblyInfo CodeLanguage="CS" OutputFile="Properties\VersionInfoGit.cs" AssemblyVersion="$(BuildVersion.Substring(1)).$(BuildRevision)" AssemblyFileVersion="$(BuildVersion.Substring(1)).$(BuildRevision)" AssemblyInformationalVersion="Built from$(CommitPending) GIT $(CommitHash) at $(Branch)" />
+    <ItemGroup>
+      <Compile Include="Properties\VersionInfoGit.cs" />
+    </ItemGroup>
   </Target>
   <Target Name="AfterBuild">
-		<Delete Files="Properties\VersionInfoGit.cs" />
+    <Delete Files="Properties\VersionInfoGit.cs" />
   </Target>
 </Project>
